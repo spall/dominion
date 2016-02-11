@@ -1,36 +1,65 @@
 module Parser where
 
 import DominionState
-import Text.Printf
+import Control.Monad.Identity
+import Text.Parsec
+import Text.Parsec.Char
+import qualified Text.Parsec.Token as P
 
--- code to parse a string into a game state
+-- define dominion state "lang"
 
-parseState :: String -> Either Error GameState
-parseState input = parseElements (words input) >>= readState 
+dominionLang :: P.LanguageDef st
+dominionLang = P.LanguageDef
+               { P.commentStart   = ""
+               , P.commentEnd     = ""
+               , P.commentLine    = ""
+               , P.nestedComments = False
+               , P.identStart     = letter
+               , P.identLetter    = alphaNum
+               , P.opStart        = P.opLetter dominionLang
+               , P.opLetter       = oneOf ":!#$%&*+./<=>?@\\^|-~"
+               , P.reservedNames= []
+               , P.reservedOpNames  = []
+               , P.caseSensitive  = True
+               }
 
-parseElements :: [String] -> Either Error [[String]]
-parseElements tokens
-  | (head tokens) == "(" = parseRestElements ([],(tail tokens))
-  | otherwise            = Left (printf "Wrong format for state: expected ( got %s instead.\n" $ head tokens)
+lexer = P.makeTokenParser dominionLang
 
-parseRestElements :: ([[String]],[String]) -> Either Error [[String]]
-parseRestElements (elems,tokens)
-  | (head tokens) == ")" = Right elems
-  | otherwise = parseElement tokens >>= (\(elem, rest_tokens) -> parseRestElements (elems ++ (elem:[]), rest_tokens))
+symbol = P.symbol lexer
+parens = P.parens lexer
+lexeme = P.lexeme lexer
+integer = P.integer lexer
 
-parseElement :: [String] -> Either Error ([String], [String])
-parseElement tokens
-  | (head tokens) == "(" = parseRestElement ((head tokens):[], tail tokens)
-  | otherwise            = Left (printf "Wrong format for element: expected ( got %s instead.\n" $ head tokens)
+parseCard :: ParsecT String () Identity Card
+parseCard = do { symbol "copper"; return copper }
+          <|> do { symbol "silver"; return silver }
+          <|> do { symbol "gold"; return gold }
+          <|> do { symbol "estate"; return estate }
+          <|> do { symbol "duchy"; return duchy }
+          <|> do { symbol "province"; return province }
+          <|> do { symbol "mine"; return mine }
 
+parsePlayers :: ParsecT String () Identity [String]
+parsePlayers = parens $ do symbol "players";
+                             many (lexeme (many1 letter))
 
--- works because no nesting of parens. otherwise we would need a stack or something
-parseRestElement :: ([String], [String]) -> Either Error ([String], [String])
-parseRestElement (elem, []) = Left (printf "No more tokens while parsing element %s" $ unwords elem)
-parseRestElement (elem, tokens)
-  | (head tokens) == ")"   = Right new
-  | otherwise              = parseRestElement new
-  where new = (elem ++ ((head tokens):[]), tail tokens)
+parseInteger :: String -> Parsec String () Integer
+parseInteger str = parens $ do symbol str
+                               integer
 
-                                                      
-  
+parseCards :: String -> Parsec String () [Card]
+parseCards str = parens $ do symbol str
+                             many parseCard
+
+parseState :: Parsec String () GameState
+parseState = parens $ do p  <- lexeme parsePlayers
+                         s  <- lexeme $ parseCards "supply"
+                         t  <- lexeme $ parseCards "trash"
+                         a  <- lexeme $ parseInteger "actions"
+                         b  <- lexeme $ parseInteger "buys"
+                         c  <- lexeme $ parseInteger "coins"
+                         d  <- lexeme $ parseCards "deck"
+                         h  <- lexeme $ parseCards "hand"
+                         p2 <- lexeme $ parseCards "plays"
+                         d2 <- lexeme $ parseCards "discards"
+                         return $ GameState p s t a b c d h p2 d2
