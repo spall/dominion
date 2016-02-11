@@ -35,7 +35,9 @@ instance Show Card where
   show Duchy{}    = "duchy"
   show Province{} = "province"
   show Mine{}     = "mine"
-  
+
+  showList cl = (++) (foldl (\prev card -> prev++" "++(show card)) "" cl)
+                                
 copper :: Card
 copper = Copper 1 0
 
@@ -59,7 +61,13 @@ mine = Mine (\x -> x)
 
 -- game state
 
-data GameState = GameState { players :: [String]
+data Player = Player { name :: String }
+
+instance Show Player where
+  show Player{name=n} = n
+  showList pl = (++) (foldl (\prev player -> prev++" "++(show player)) "" pl)
+
+data GameState = GameState { players :: [Player]
                            , supply :: [Card]
                            , trash :: [Card]
                            , actions :: Integer
@@ -72,26 +80,16 @@ data GameState = GameState { players :: [String]
                            }
 
 instance Show GameState where
-  show GameState{players   = p  -- do show for all of the lists and cons onto the front and end parens
-                , supply   = s  -- and the word
-                , trash    = t
-                , actions  = a
-                , buys     = b
-                , coins    = c
-                , deck     = d
-                , hand     = h
-                , plays    = p2
-                , discards = d2} = "( "++ (showElement "players" p) ++ "\n"
-                                       ++ (showElement "supply" s) ++ "\n"
-                                       ++ (showElement "trash" t) ++ "\n"
-                                       ++ (showElement "actions" a) ++ "\n"
-                                       ++ (showElement "buys" b) ++ "\n"
-                                       ++ (showElement "coins" c) ++ "\n"
-                                       ++ (showElement "deck" d) ++ "\n"
-                                       ++ (showElement "hand" h) ++ "\n"
-                                       ++ (showElement "plays" p2) ++ "\n"
-                                       ++ (showElement "discards" d2) ++ " )"
-                                    
+  show gs = "( "++ (showElement "players" $ players gs) ++ "\n"
+            ++ (showElement "supply" $ supply gs) ++ "\n"
+            ++ (showElement "trash" $ trash gs) ++ "\n"
+            ++ (showElement "actions" $ actions gs) ++ "\n"
+            ++ (showElement "buys" $ buys gs) ++ "\n"
+            ++ (showElement "coins" $ coins gs) ++ "\n"
+            ++ (showElement "deck" $ deck gs) ++ "\n"
+            ++ (showElement "hand" $ hand gs) ++ "\n"
+            ++ (showElement "plays" $ plays gs) ++ "\n"
+            ++ (showElement "discards" $ discards gs) ++ " )"
 
 showElement :: (Show a) => String -> a -> String
 showElement label elem = "( "++label++" "++(show elem)++" )"

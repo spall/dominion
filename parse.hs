@@ -39,9 +39,13 @@ parseCard = do { symbol "copper"; return copper }
           <|> do { symbol "province"; return province }
           <|> do { symbol "mine"; return mine }
 
-parsePlayers :: ParsecT String () Identity [String]
+parsePlayer :: ParsecT String () Identity Player
+parsePlayer = do name <- many1 letter
+                 return $ Player name
+
+parsePlayers :: ParsecT String () Identity [Player]
 parsePlayers = parens $ do symbol "players";
-                             many (lexeme (many1 letter))
+                           many (lexeme parsePlayer)
 
 parseInteger :: String -> Parsec String () Integer
 parseInteger str = parens $ do symbol str
