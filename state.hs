@@ -5,10 +5,10 @@ import Data.Either
 import Data.Char
 
 class Cost t where
-  cost :: t -> Int
+  cost :: t -> Integer
 
 class Value t where
-  value :: t -> Int
+  value :: t -> Integer
 
 type Error = String
 
@@ -29,6 +29,12 @@ instance Show Treasure where
   show Silver = "silver"
   show Gold   = "gold"
 
+instance Eq Treasure where
+  (==) Copper Copper = True
+  (==) Silver Silver = True
+  (==) Gold   Gold   = True
+  (==) _      _      = False
+
 data Victory = Estate | Duchy | Province
 
 instance Cost Victory where
@@ -46,6 +52,12 @@ instance Show Victory where
   show Duchy    = "duchy"
   show Province = "province"
 
+instance Eq Victory where
+  (==) Estate   Estate   = True
+  (==) Duchy    Duchy    = True
+  (==) Province Province = True
+  (==) _        _        = False
+
 data Action = Mine
 
 instance Cost Action where
@@ -53,6 +65,9 @@ instance Cost Action where
 
 instance Show Action where
   show Mine = "mine"
+
+instance Eq Action where
+  (==) Mine Mine = True
 
 data Card = T Treasure | V Victory | A Action
 
@@ -66,6 +81,12 @@ instance Show Card where
   show (V victory)  = show victory
   show (A action)   = show action
   showList cl = (++) (foldl (\prev card -> prev++" "++(show card)) "" cl)
+
+instance Eq Card where
+  (==) (T c1) (T c2) = c1 == c2
+  (==) (V c1) (V c2) = c1 == c2
+  (==) (A c1) (A c2) = c1 == c2
+  (==) _      _      = False
                                 
 -- game state
 
@@ -101,35 +122,3 @@ instance Show GameState where
 
 showElement :: (Show a) => String -> a -> String
 showElement label elem = "( "++label++" "++(show elem)++" )"
-
-
--- Action cards
-
--- trash a treasure card for a new treasure card of no more than +1 value.
--- new card goes in hand.
-
-{-
-mine :: Card -- need to update state. todo
-mine = Mine (\gs@GameState{hand=cards} -> case mineLeastValuable cards of
-                                       (old,new) -> (gs, mineMessage old new))
-
-mineLeastValuable :: [Card] -> (Card, Card) --(old_card, new_card)
-mineLeastValuable cards = let lsc = foldl (\prev card ->
-                                           case (prev, card) of
-                                           (Copper,_) -> prev
-                                           (_,Copper) -> card
-                                           (Silver,_) -> prev
-                                           (_,Silver) -> card
-                                           (Gold,_)   -> prev
-                                           (_,_)        -> card) (head cards) (tail cards) in
-                          (lsc, mineTreasure lsc)
-                          
-mineTreasure :: Card -> Card
-mineTreasure Copper = Silver
-mineTreasure Silver = Gold
-mineTreasure Gold = Gold
-
-mineMessage :: Card -> Card -> String
-mineMessage old_card new_card = "("++ "act" ++ " " ++ "mine" ++ " " ++ (show old_card) ++ " " ++ (show new_card) ++ ")"
-
--}
