@@ -30,14 +30,23 @@ parens = P.parens lexer
 lexeme = P.lexeme lexer
 integer = P.integer lexer
 
+parseTreasure :: ParsecT String () Identity Card
+parseTreasure = do { symbol "copper"; return (T Copper) }
+            <|> do { symbol "silver"; return (T Silver) }
+            <|> do { symbol "gold"; return (T Gold) }
+
+parseVictory :: ParsecT String () Identity Card
+parseVictory = do { symbol "estate"; return (V Estate) }
+           <|> do { symbol "duchy"; return (V Duchy) }
+           <|> do { symbol "province"; return (V Province) }
+
+parseAction :: ParsecT String () Identity Card
+parseAction = do { symbol "mine"; return (A Mine) }
+
 parseCard :: ParsecT String () Identity Card
-parseCard = do { symbol "copper"; return copper }
-          <|> do { symbol "silver"; return silver }
-          <|> do { symbol "gold"; return gold }
-          <|> do { symbol "estate"; return estate }
-          <|> do { symbol "duchy"; return duchy }
-          <|> do { symbol "province"; return province }
-          <|> do { symbol "mine"; return mine }
+parseCard = parseTreasure
+        <|> parseVictory
+        <|> parseAction
 
 parsePlayer :: ParsecT String () Identity Player
 parsePlayer = do name <- many1 letter
@@ -47,15 +56,15 @@ parsePlayers :: ParsecT String () Identity [Player]
 parsePlayers = parens $ do symbol "players";
                            many (lexeme parsePlayer)
 
-parseInteger :: String -> Parsec String () Integer
+parseInteger :: String -> ParsecT String () Identity Integer
 parseInteger str = parens $ do symbol str
                                integer
 
-parseCards :: String -> Parsec String () [Card]
+parseCards :: String -> ParsecT String () Identity [Card]
 parseCards str = parens $ do symbol str
                              many parseCard
 
-parseState :: Parsec String () GameState
+parseState :: ParsecT String () Identity GameState
 parseState = parens $ do p  <- lexeme parsePlayers
                          s  <- lexeme $ parseCards "supply"
                          t  <- lexeme $ parseCards "trash"
@@ -67,3 +76,29 @@ parseState = parens $ do p  <- lexeme parsePlayers
                          p2 <- lexeme $ parseCards "plays"
                          d2 <- lexeme $ parseCards "discards"
                          return $ GameState p s t a b c d h p2 d2
+
+parseNotification :: ParsecT String () Identity (Maybe GameState)
+parseNotification = (parens $ do { symbol "move";
+                                   gs <- parseState;
+                                   return $ Just gs } )
+                <|> (parens $ do { symbol "moved";
+                                   name <- many1 letter;
+                                   return Nothing } ) 
+
+parsePlay :: ParsecT String () Identity ()
+parsePlay = (parens $ do { symbol "act";
+                           symbol "mine";
+                           lexeme $ parseTreasure;
+                           lexeme $ parseTreasure;
+                           return () } )
+        <|> (parens $ do { symbol "add";
+                           lexeme $ parseTreasure;
+                           return () } )
+        <|> (parens $ do { symbol "buy";
+                           lexeme $ parseCard;
+                           return () } )
+        <|> (parens $ do { symbol "clean";
+                           lexeme $ parseCard;
+                           return () } )
+        <|> (parens $ do { symbol "clean";
+                           return () } )
