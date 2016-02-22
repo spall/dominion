@@ -46,61 +46,67 @@ parseAction :: ParsecT String () Identity Card
 parseAction = do { symbol "mine"; return (A Mine) }
 
 parseCard :: ParsecT String () Identity Card
-parseCard = parseTreasure
-        <|> parseVictory
-        <|> parseAction
+parseCard = try parseTreasure
+        <|> try parseVictory
+        <|> try parseAction
 
 parsePlayer :: ParsecT String () Identity Player
-parsePlayer = do name <- identifier
+parsePlayer = do name <- lexeme identifier
                  return $ Player name
 
 parsePlayers :: ParsecT String () Identity [Player]
-parsePlayers = parens $ do symbol "players";
-                           many (lexeme parsePlayer)
+parsePlayers = lexeme $ parens $ do symbol "players";
+                                    many parsePlayer
 
 parseInteger :: String -> ParsecT String () Identity Integer
-parseInteger str = parens $ do symbol str
-                               integer
+parseInteger str = lexeme $ parens $ do symbol str
+                                        lexeme integer
 
 parseCards :: String -> ParsecT String () Identity [Card]
-parseCards str = parens $ do symbol str
-                             many parseCard
+parseCards str = lexeme $ parens $ do symbol str
+                                      many parseCard -- no lexeme needed matching symbols
 
 parseState :: ParsecT String () Identity GameState
-parseState = parens $ do p  <- lexeme parsePlayers
-                         s  <- lexeme $ parseCards "supply"
-                         t  <- lexeme $ parseCards "trash"
-                         a  <- lexeme $ parseInteger "actions"
-                         b  <- lexeme $ parseInteger "buys"
-                         c  <- lexeme $ parseInteger "coins"
-                         d  <- lexeme $ parseCards "deck"
-                         h  <- lexeme $ parseCards "hand"
-                         p2 <- lexeme $ parseCards "plays"
-                         d2 <- lexeme $ parseCards "discards"
-                         return $ GameState p s t a b c d h p2 d2
+parseState = lexeme $ parens $ do p  <- parsePlayers
+                                  s  <- parseCards "supply"
+                                  t  <- parseCards "trash"
+                                  a  <- parseInteger "actions"
+                                  b  <- parseInteger "buys"
+                                  c  <- parseInteger "coins"
+                                  d  <- parseCards "deck"
+                                  h  <- parseCards "hand"
+                                  p2 <- parseCards "plays"
+                                  d2 <- parseCards "discards"
+                                  return $ GameState p s t a b c d h p2 d2
 
 parseNotification :: ParsecT String () Identity (Maybe GameState)
-parseNotification = whitespace >> (parens $ do { symbol "move";
-                                                 gs <- parseState;
-                                                 return $ Just gs })
-                       
-parseWord :: ParsecT String () Identity String
-parseWord = symbol "move" >> (return "yes")
+parseNotification = whitespace >> ( try parseMove <|> try parseMoved )
+
+parseMove :: ParsecT String () Identity (Maybe GameState)
+parseMove = parens $ do symbol "move";
+                        gs <- parseState;
+                        return $ Just gs
+
+parseMoved :: ParsecT String () Identity (Maybe GameState)
+parseMoved = parens $ do symbol "moved";
+                         lexeme identifier;
+                         lexeme parsePlay;
+                         return Nothing
 
 parsePlay :: ParsecT String () Identity ()
-parsePlay = (parens $ do { symbol "act";
-                           symbol "mine";
-                           lexeme $ parseTreasure;
-                           lexeme $ parseTreasure;
-                           return () } )
-        <|> (parens $ do { symbol "add";
-                           lexeme $ parseTreasure;
-                           return () } )
-        <|> (parens $ do { symbol "buy";
-                           lexeme $ parseCard;
-                           return () } )
-        <|> (parens $ do { symbol "clean";
-                           lexeme $ parseCard;
-                           return () } )
-        <|> (parens $ do { symbol "clean";
-                           return () } )
+parsePlay = try (lexeme (parens $ do { symbol "act";
+                                        symbol "mine";
+                                        parseTreasure;
+                                        parseTreasure;
+                                        return () } ))
+        <|> try (lexeme (parens $ do { symbol "add";
+                                        parseTreasure;
+                                        return () } ))
+        <|> try (lexeme (parens $ do { symbol "buy";
+                                        parseCard;
+                                        return () } ))
+        <|> try (lexeme (parens $ do { symbol "clean";
+                                        parseCard;
+                                        return () } ))
+        <|> try (lexeme (parens $ do { symbol "clean";
+                                        return () } ))

@@ -12,7 +12,7 @@ import Player1
 parseInput :: String -> IO (Maybe GameState)
 parseInput input =  do c <- getChar
                        case (parse parseNotification "stdin" (input++(c:[]))) of
-                         (Left err)  -> parseInput $ input++(c:[])
+                         (Left err)  -> (parseInput $ input++(c:[]))
                          (Right mgs) -> return $ mgs
 
 main = do result <- parseInput ""
