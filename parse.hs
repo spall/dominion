@@ -30,6 +30,7 @@ parens = P.parens lexer
 lexeme = P.lexeme lexer
 integer = P.integer lexer
 identifier = P.identifier lexer
+whitespace = P.whiteSpace lexer
 
 parseTreasure :: ParsecT String () Identity Card
 parseTreasure = do { symbol "copper"; return (T Copper) }
@@ -66,22 +67,22 @@ parseCards str = parens $ do symbol str
                              many parseCard
 
 parseState :: ParsecT String () Identity GameState
-parseState = lexeme $ parens $ do p  <- lexeme parsePlayers
-                                  s  <- lexeme $ parseCards "supply"
-                                  t  <- lexeme $ parseCards "trash"
-                                  a  <- lexeme $ parseInteger "actions"
-                                  b  <- lexeme $ parseInteger "buys"
-                                  c  <- lexeme $ parseInteger "coins"
-                                  d  <- lexeme $ parseCards "deck"
-                                  h  <- lexeme $ parseCards "hand"
-                                  p2 <- lexeme $ parseCards "plays"
-                                  d2 <- lexeme $ parseCards "discards"
-                                  return $ GameState p s t a b c d h p2 d2
+parseState = parens $ do p  <- lexeme parsePlayers
+                         s  <- lexeme $ parseCards "supply"
+                         t  <- lexeme $ parseCards "trash"
+                         a  <- lexeme $ parseInteger "actions"
+                         b  <- lexeme $ parseInteger "buys"
+                         c  <- lexeme $ parseInteger "coins"
+                         d  <- lexeme $ parseCards "deck"
+                         h  <- lexeme $ parseCards "hand"
+                         p2 <- lexeme $ parseCards "plays"
+                         d2 <- lexeme $ parseCards "discards"
+                         return $ GameState p s t a b c d h p2 d2
 
 parseNotification :: ParsecT String () Identity (Maybe GameState)
-parseNotification = parens $ do { symbol "move";
-                                  gs <- parseState;
-                                  return $ Just gs }
+parseNotification = whitespace >> (parens $ do { symbol "move";
+                                                 gs <- parseState;
+                                                 return $ Just gs })
                        
 parseWord :: ParsecT String () Identity String
 parseWord = symbol "move" >> (return "yes")
