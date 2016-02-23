@@ -10,10 +10,10 @@ tryMine GameState{ supply = s
                  , hand   = h}
   |    (elem (A Mine) h)
     && (elem (T Silver) h)
-    && (elem (T Gold) s) = Just $ unwords ["(", show Mine, show Silver, show Gold, ")"]
+    && (elem (T Gold) s) = Just $ unwords ["(", "act", show Mine, show Silver, show Gold, ")"]
   |    (elem (A Mine) h)
     && (elem (T Copper) h)
-    && (elem (T Silver) s) = Just $ unwords ["(", show Mine, show Copper, show Silver, ")"]
+    && (elem (T Silver) s) = Just $ unwords ["(", "act", show Mine, show Copper, show Silver, ")"]
   | otherwise = Nothing
 
 tryAction :: GameState -> Maybe String
