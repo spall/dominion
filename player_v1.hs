@@ -9,11 +9,13 @@ tryMine :: GameState -> Maybe String
 tryMine GameState{ supply = s
                  , hand   = h}
   |    (elem (A Mine) h)
-    && (elem (T Silver) h)
-    && (elem (T Gold) s) = Just $ unwords ["(", "act", show Mine, show Silver, show Gold, ")"]
+       && (elem (T Silver) h)
+       && (elem (T Gold) s) = Just $ unwords ["(", "act", show Mine, show Silver, show Gold, ")"]
+                              
   |    (elem (A Mine) h)
-    && (elem (T Copper) h)
-    && (elem (T Silver) s) = Just $ unwords ["(", "act", show Mine, show Copper, show Silver, ")"]
+       && (elem (T Copper) h)
+       && (elem (T Silver) s) = Just $ unwords ["(", "act", show Mine, show Copper, show Silver, ")"]
+                                                                             
   | otherwise = Nothing
 
 tryAction :: GameState -> Maybe String
@@ -37,15 +39,21 @@ tryBuy GameState{ buys = b
                 , hand = h
                 , supply = s}
   | b < 1 = Nothing
+            
   | isJust ft = Just $ unwords ["(add", (show $ fromJust ft)++")"]
+                
   | c > (cost Province)
     && (elem (V Province) s) = Just $ unwords ["(", "buy", show Province, ")"]
-  | c > (cost Mine)
-    && (elem (A Mine) s) = Just $ unwords ["(", "buy", show Mine, ")"]
+
   | c > (cost Gold)
     && (elem (T Gold) s) = Just $ unwords ["(", "buy", show Gold, ")"]
+                         
+  | c > (cost Mine)
+    && (elem (A Mine) s) = Just $ unwords ["(", "buy", show Mine, ")"]
+                                              
   | c > (cost Silver)
     && (elem (T Silver) s) = Just $ unwords ["(", "buy", show Silver, ")"]
+                             
   | otherwise = Nothing
   where ft = firstTreasure h
 
