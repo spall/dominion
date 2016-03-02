@@ -1,21 +1,23 @@
 module Main where
 
-import AlternateParser
-import Data.Attoparsec.ByteString
+--import AlternateParser
+--import Data.Attoparsec.ByteString
+import Parser
+import Text.Parsec.Prim
 import DominionState
 import qualified Data.ByteString.Char8 as B
 import System.IO
 import Player1
 
 -- cannot error...
-{-
+
 parseInput :: String -> IO (Maybe GameState)
 parseInput input =  do c <- getChar
                        case (parse parseNotification "stdin" (input++(c:[]))) of
                          (Left err)  -> parseInput $ input++(c:[])
                          (Right mgs) -> return mgs
--}
 
+{-
 parseInputDriver :: IO (Either String (Maybe GameState))
 parseInputDriver = do c <- getChar
                       case parse parseNotification $ B.pack [c] of
@@ -30,14 +32,12 @@ parseInput kont = do c <- getChar
                        (Partial k)     -> parseInput k
                        (Done _ result) -> return $ Right result
                    
-
-main = do result <- parseInputDriver
+-}
+main = do result <- parseInput ""
           case result of
-            (Left err) -> hPutStrLn stderr err
-            (Right mgs) -> case mgs of
-                           Nothing -> main
-                           (Just gs) -> let result = doTurn gs in
-                                        do hPutStrLn stderr result;
-                                           hPutStrLn stdout result;
-                                           hFlush stdout;
-                                           main;
+            Nothing -> main
+            (Just gs) -> let result = doTurn gs in
+                         do hPutStrLn stderr result;
+                            hPutStrLn stdout result;
+                            hFlush stdout;
+                            main;

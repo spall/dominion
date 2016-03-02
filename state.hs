@@ -58,16 +58,38 @@ instance Eq Victory where
   (==) Province Province = True
   (==) _        _        = False
 
-data Action = Mine
+data Action = Mine | Cellar | Market | Remodel | Smithy | Village | Woodcutter | Workshop
 
 instance Cost Action where
-  cost Mine = 5
+  cost Mine       = 5
+  cost Cellar     = 2
+  cost Market     = 5
+  cost Remodel    = 4
+  cost Smithy     = 4
+  cost Village    = 3
+  cost Woodcutter = 3
+  cost Workshop   = 3
 
 instance Show Action where
-  show Mine = "mine"
+  show Mine       = "mine"
+  show Cellar     = "cellar"
+  show Market     = "market"
+  show Remodel    = "remodel"
+  show Smithy     = "smithy"
+  show Village    = "village"
+  show Woodcutter = "woodcutter"
+  show Workshop   = "workshop"
 
 instance Eq Action where
-  (==) Mine Mine = True
+  (==) Mine Mine             = True
+  (==) Cellar Cellar         = True
+  (==) Market Market         = True
+  (==) Remodel Remodel       = True
+  (==) Smithy Smithy         = True
+  (==) Village Village       = True
+  (==) Woodcutter Woodcutter = True
+  (==) Workshop Workshop     = True
+  (==) _ _                   = False
 
 data Card = T Treasure | V Victory | A Action
 
