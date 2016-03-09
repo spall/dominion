@@ -53,7 +53,9 @@ tryWoodcutter GameState{hand=h}
 
 -- must cost no more than 4
 tryWorkshop :: GameState -> Maybe String 
-tryWorkshop GameState{supply=s}
+tryWorkshop GameState{hand=h
+                      ,supply=s}
+  | not (elem (A Workshop) h) = Nothing
   | (elem (A Remodel) s) = reply (A Remodel)
   | (elem (A Smithy) s) = reply (A Smithy)
   | (elem (A Village) s) = reply (A Village)
@@ -66,7 +68,14 @@ tryWorkshop GameState{supply=s}
 tryAction :: GameState -> Maybe String
 tryAction gs
   | (actions gs) < 1 = Nothing
-  | otherwise = tryMine gs
+  | otherwise = case filter (\result -> isJust result)
+                     (map (\f -> f gs) fActions) of
+                []    -> Nothing
+                (f:r) -> f
+  where fActions = [tryMine, tryCellar, tryMarket
+                  , tryRemodel, trySmithy, tryVillage
+                  , tryWoodcutter, tryWorkshop]
+
 
 firstTreasure :: [Card] -> Maybe Card
 firstTreasure ls = case filter (\c -> c == (T Copper)

@@ -33,17 +33,24 @@ identifier = P.identifier lexer
 whitespace = P.whiteSpace lexer
 
 parseTreasure :: ParsecT String () Identity Card
-parseTreasure = do { symbol "copper"; return (T Copper) }
-            <|> do { symbol "silver"; return (T Silver) }
-            <|> do { symbol "gold"; return (T Gold) }
+parseTreasure = (try $ do { symbol "copper"; return (T Copper) })
+            <|> (try $ do { symbol "silver"; return (T Silver) })
+            <|> (try $ do { symbol "gold"; return (T Gold) })
 
 parseVictory :: ParsecT String () Identity Card
-parseVictory = do { symbol "estate"; return (V Estate) }
-           <|> do { symbol "duchy"; return (V Duchy) }
-           <|> do { symbol "province"; return (V Province) }
+parseVictory = (try $ do { symbol "estate"; return (V Estate) })
+           <|> (try $ do { symbol "duchy"; return (V Duchy) })
+           <|> (try $ do { symbol "province"; return (V Province) })
 
 parseAction :: ParsecT String () Identity Card
-parseAction = do { symbol "mine"; return (A Mine) }
+parseAction = (try $ do { symbol "mine"; return (A Mine) })
+          <|> (try $ do { symbol "cellar"; return (A Cellar) })
+          <|> (try $ do { symbol "market"; return (A Market) })
+          <|> (try $ do { symbol "remodel"; return (A Remodel) })
+          <|> (try $ do { symbol "smithy"; return (A Smithy) })
+          <|> (try $ do { symbol "village"; return (A Village) })
+          <|> (try $ do { symbol "woodcutter"; return (A Woodcutter) })
+          <|> (try $ do { symbol "workshop"; return (A Workshop) })
 
 parseCard :: ParsecT String () Identity Card
 parseCard = try parseTreasure
@@ -94,11 +101,7 @@ parseMoved = parens $ do symbol "moved";
                          return Nothing
 
 parsePlay :: ParsecT String () Identity ()
-parsePlay = try (lexeme (parens $ do { symbol "act";
-                                        symbol "mine";
-                                        parseTreasure;
-                                        parseTreasure;
-                                        return () } ))
+parsePlay = try parseActPlay
         <|> try (lexeme (parens $ do { symbol "add";
                                         parseTreasure;
                                         return () } ))
@@ -110,3 +113,35 @@ parsePlay = try (lexeme (parens $ do { symbol "act";
                                         return () } ))
         <|> try (lexeme (parens $ do { symbol "clean";
                                         return () } ))
+
+parseActPlay = try (lexeme (parens $ do {symbol "act";
+                                         symbol "mine";
+                                         parseTreasure;
+                                         parseTreasure;
+                                         return () }))
+               <|> try (lexeme (parens $ do { symbol "act";
+                                          symbol "cellar";
+                                          many parseCard;
+                                          return () }))
+               <|> try (lexeme (parens $ do { symbol "act";
+                                              symbol "market";
+                                              return () }))
+               <|> try (lexeme (parens $ do { symbol "act";
+                                              symbol "remodel";
+                                              parseCard;
+                                              parseCard;
+                                              return () }))
+               <|> try (lexeme (parens $ do { symbol "act";
+                                              symbol "smithy";
+                                              return () }))
+               <|> try (lexeme (parens $ do { symbol "act";
+                                              symbol "village";
+                                              return () }))
+               <|> try (lexeme (parens $ do { symbol "act";
+                                              symbol "woodcutter";
+                                              return () }))
+               <|> try (lexeme (parens $ do { symbol "act";
+                                              symbol "workshop";
+                                              parseCard;
+                                              return () }))
+
