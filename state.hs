@@ -58,7 +58,7 @@ instance Eq Victory where
   (==) Province Province = True
   (==) _        _        = False
 
-data Action = Mine | Cellar | Market | Remodel | Smithy | Village | Woodcutter | Workshop
+data Action = Mine | Cellar | Market | Remodel | Smithy | Village | Woodcutter | Workshop | Militia | Moat
 
 instance Cost Action where
   cost Mine       = 5
@@ -69,6 +69,8 @@ instance Cost Action where
   cost Village    = 3
   cost Woodcutter = 3
   cost Workshop   = 3
+  cost Militia    = 0
+  cost Moat       = 0
 
 instance Show Action where
   show Mine       = "mine"
@@ -79,6 +81,8 @@ instance Show Action where
   show Village    = "village"
   show Woodcutter = "woodcutter"
   show Workshop   = "workshop"
+  show Militia    = "militia"
+  show Moat       = "moat"
 
 instance Eq Action where
   (==) Mine Mine             = True
@@ -89,6 +93,8 @@ instance Eq Action where
   (==) Village Village       = True
   (==) Woodcutter Woodcutter = True
   (==) Workshop Workshop     = True
+  (==) Militia Militia       = True
+  (==) Moat Moat             = True
   (==) _ _                   = False
 
 data Card = T Treasure | V Victory | A Action

@@ -51,6 +51,8 @@ parseAction = (try $ do { symbol "mine"; return (A Mine) })
           <|> (try $ do { symbol "village"; return (A Village) })
           <|> (try $ do { symbol "woodcutter"; return (A Woodcutter) })
           <|> (try $ do { symbol "workshop"; return (A Workshop) })
+          <|> (try $ do { symbol "militia"; return (A Militia) })
+          <|> (try $ do { symbol "moat"; return (A Moat) })
 
 parseCard :: ParsecT String () Identity Card
 parseCard = try parseTreasure
@@ -87,7 +89,30 @@ parseState = lexeme $ parens $ do p  <- parsePlayers
                                   return $ GameState p s t a b c d h p2 d2
 
 parseNotification :: ParsecT String () Identity (Maybe GameState)
-parseNotification = whitespace >> ( try parseMove <|> try parseMoved )
+parseNotification = whitespace >> ( try parseMove <|> try parseMoved <|> try parseAttacked <|> try parseDefended)
+
+parseAttacked :: ParsecT String () Identity (Maybe GameState)
+parseAttacked = parens $ do symbol "attacked";
+                            parens $ do symbol "act";
+                                        symbol "militia";
+                                        return ();
+                            lexeme identifier;
+                            lexeme parseState;
+                            return Nothing
+
+parseDefended :: ParsecT String () Identity (Maybe GameState)
+parseDefended = parens $ do symbol "defended";
+                            lexeme identifier;
+                            lexeme parseDefense;
+                            return Nothing
+
+parseDefense :: ParsecT String () Identity () -- don't care so return void
+parseDefense = try (parens $ do {symbol "moat";
+                                 return ()})
+               <|> try (parens $ do { symbol "discard";
+                                      many parseCard;
+                                      return ()})
+                           
 
 parseMove :: ParsecT String () Identity (Maybe GameState)
 parseMove = parens $ do symbol "move";
