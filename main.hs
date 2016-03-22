@@ -11,32 +11,13 @@ import Player1
 
 -- cannot error...
 
-parseInput :: String -> IO (Maybe GameState)
-parseInput input =  do c <- getChar
-                       case (parse parseNotification "stdin" (input++(c:[]))) of
-                         (Left err)  -> (parseInput $ input++(c:[]))
-                         (Right mgs) -> return mgs
+parseInput :: IO String
+parseInput =  do line <- getLine
+                 case (parse parseNotification "stdin" line) of
+                   (Left err)  -> hPutStrLn stderr (show err) >> (hPutStrLn stdout (show err)) >> parseInput
+                   (Right not) -> case not of
+                                  Move{ state=gs }     -> hPutStrLn stdout (doTurn gs) >> (hFlush stdout) >> parseInput
+                                  Attacked{ state=gs } -> hPutStrLn stdout (doDefense gs) >> (hFlush stdout) >> parseInput
+                                  _ -> hPutStrLn stderr "else" >> parseInput
 
-{-
-parseInputDriver :: IO (Either String (Maybe GameState))
-parseInputDriver = do c <- getChar
-                      case parse parseNotification $ B.pack [c] of
-                        (Fail _ _ err)  -> return $ Left err
-                        (Partial k)     -> parseInput k 
-                        (Done _ result) -> return $ Right result
-
-parseInput :: (B.ByteString -> IResult B.ByteString (Maybe GameState)) -> IO (Either String (Maybe GameState))
-parseInput kont = do c <- getChar
-                     case kont $ B.pack [c] of
-                       (Fail _ _ err)  -> return $ Left err
-                       (Partial k)     -> parseInput k
-                       (Done _ result) -> return $ Right result
-                   
--}
-main = do result <- parseInput ""
-          case result of
-            Nothing -> main
-            (Just gs) -> let result = doTurn gs in
-                         do hPutStrLn stdout result;
-                            hFlush stdout;
-                            main;
+main = parseInput

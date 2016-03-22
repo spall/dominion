@@ -65,6 +65,14 @@ tryWorkshop GameState{hand=h
   | otherwise = Nothing
   where reply = (\card -> Just $ unwords ["(", "act", show Workshop, show card, ")"])
 
+tryMilitia :: GameState -> Maybe String
+tryMilitia gs = Nothing
+
+tryMoat :: GameState -> Maybe String
+tryMoat GameState{hand=h}
+  | (elem (A Moat) h) = Just $ unwords ["(", show Moat, ")"]
+  | otherwise = Nothing
+
 tryAction :: GameState -> Maybe String
 tryAction gs
   | (actions gs) < 1 = Nothing
@@ -118,4 +126,12 @@ doTurn gs = case tryAction gs of
                        Nothing -> case hand gs of
                                   [] -> unwords ["(", "clean", ")"]
                                   (f:r) -> unwords ["(", "clean", show f, ")"]
+
+doDiscard :: GameState -> String
+doDiscard GameState{hand=h} = unwords $ ["(", "discard"] ++ (map show (drop 3 h)) ++ [")"]
+
+doDefense :: GameState -> String
+doDefense gs = case tryMoat gs of
+               (Just str) -> str
+               Nothing    -> doDiscard gs
                                   

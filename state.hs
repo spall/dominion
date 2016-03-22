@@ -150,3 +150,25 @@ instance Show GameState where
 
 showElement :: (Show a) => String -> a -> String
 showElement label elem = "( "++label++" "++(show elem)++" )"
+
+
+-- other --
+data Play = Clean { maybeCard::(Maybe Card) }
+          | Buy { card::Card }
+          | Add { treasure::Treasure }
+          | Act { action::Action
+                , info::[Card] }
+
+data Defense = CardDefense { defenseAction::Action }
+             | Discard { cards::[Card] }
+
+
+data Notification = Attacked { play::Play
+                             , player::Player
+                             , state::GameState }
+                  | Defended { player::Player
+                             , defense::Defense }
+                  | Move { state::GameState }
+                  | Moved { player::Player
+                          , play::Play }
+

@@ -32,32 +32,35 @@ integer = P.integer lexer
 identifier = P.identifier lexer
 whitespace = P.whiteSpace lexer
 
-parseTreasure :: ParsecT String () Identity Card
-parseTreasure = (try $ do { symbol "copper"; return (T Copper) })
-            <|> (try $ do { symbol "silver"; return (T Silver) })
-            <|> (try $ do { symbol "gold"; return (T Gold) })
+parseTreasure :: ParsecT String () Identity Treasure
+parseTreasure = (try $ do { symbol "copper"; return Copper })
+            <|> (try $ do { symbol "silver"; return Silver })
+            <|> (try $ do { symbol "gold"; return Gold })
 
-parseVictory :: ParsecT String () Identity Card
-parseVictory = (try $ do { symbol "estate"; return (V Estate) })
-           <|> (try $ do { symbol "duchy"; return (V Duchy) })
-           <|> (try $ do { symbol "province"; return (V Province) })
+parseVictory :: ParsecT String () Identity Victory
+parseVictory = (try $ do { symbol "estate"; return Estate })
+           <|> (try $ do { symbol "duchy"; return Duchy })
+           <|> (try $ do { symbol "province"; return Province })
 
-parseAction :: ParsecT String () Identity Card
-parseAction = (try $ do { symbol "mine"; return (A Mine) })
-          <|> (try $ do { symbol "cellar"; return (A Cellar) })
-          <|> (try $ do { symbol "market"; return (A Market) })
-          <|> (try $ do { symbol "remodel"; return (A Remodel) })
-          <|> (try $ do { symbol "smithy"; return (A Smithy) })
-          <|> (try $ do { symbol "village"; return (A Village) })
-          <|> (try $ do { symbol "woodcutter"; return (A Woodcutter) })
-          <|> (try $ do { symbol "workshop"; return (A Workshop) })
-          <|> (try $ do { symbol "militia"; return (A Militia) })
-          <|> (try $ do { symbol "moat"; return (A Moat) })
+parseAction :: ParsecT String () Identity Action
+parseAction = (try $ do { symbol "mine"; return Mine })
+          <|> (try $ do { symbol "cellar"; return Cellar })
+          <|> (try $ do { symbol "market"; return Market })
+          <|> (try $ do { symbol "remodel"; return Remodel })
+          <|> (try $ do { symbol "smithy"; return Smithy })
+          <|> (try $ do { symbol "village"; return Village })
+          <|> (try $ do { symbol "woodcutter"; return Woodcutter })
+          <|> (try $ do { symbol "workshop"; return Workshop })
+          <|> (try $ do { symbol "militia"; return Militia })
+          <|> (try $ do { symbol "moat"; return Moat })
 
 parseCard :: ParsecT String () Identity Card
-parseCard = try parseTreasure
-        <|> try parseVictory
-        <|> try parseAction
+parseCard = (try $ do { treasure <- parseTreasure;
+                        return $ T treasure })
+        <|> (try $ do { victory <- parseVictory;
+                        return $ V victory })
+        <|> (try $ do { action <- parseAction;
+                        return $ A action })
 
 parsePlayer :: ParsecT String () Identity Player
 parsePlayer = do name <- lexeme identifier
@@ -88,85 +91,86 @@ parseState = lexeme $ parens $ do p  <- parsePlayers
                                   d2 <- parseCards "discards"
                                   return $ GameState p s t a b c d h p2 d2
 
-parseNotification :: ParsecT String () Identity (Maybe GameState)
+parseNotification :: ParsecT String () Identity Notification
 parseNotification = whitespace >> ( try parseMove <|> try parseMoved <|> try parseAttacked <|> try parseDefended)
 
-parseAttacked :: ParsecT String () Identity (Maybe GameState)
+parseAttacked :: ParsecT String () Identity Notification
 parseAttacked = parens $ do symbol "attacked";
                             parens $ do symbol "act";
                                         symbol "militia";
                                         return ();
-                            lexeme identifier;
-                            lexeme parseState;
-                            return Nothing
+                            player <- lexeme identifier;
+                            state <- lexeme parseState;
+                            return $ Attacked (Act Militia []) (Player player) state
 
-parseDefended :: ParsecT String () Identity (Maybe GameState)
+parseDefended :: ParsecT String () Identity Notification -- todo
 parseDefended = parens $ do symbol "defended";
-                            lexeme identifier;
-                            lexeme parseDefense;
-                            return Nothing
+                            player <- lexeme identifier;
+                            defense <- lexeme parseDefense;
+                            return $ Defended (Player player) defense
 
-parseDefense :: ParsecT String () Identity () -- don't care so return void
+parseDefense :: ParsecT String () Identity Defense
 parseDefense = try (parens $ do {symbol "moat";
-                                 return ()})
+                                 return $ CardDefense Moat })
                <|> try (parens $ do { symbol "discard";
-                                      many parseCard;
-                                      return ()})
+                                      cards <- many parseCard;
+                                      return $ Discard cards })
                            
 
-parseMove :: ParsecT String () Identity (Maybe GameState)
+parseMove :: ParsecT String () Identity Notification
 parseMove = parens $ do symbol "move";
                         gs <- parseState;
-                        return $ Just gs
+                        return $ Move gs
 
-parseMoved :: ParsecT String () Identity (Maybe GameState)
+parseMoved :: ParsecT String () Identity Notification
 parseMoved = parens $ do symbol "moved";
-                         lexeme identifier;
-                         lexeme parsePlay;
-                         return Nothing
+                         player <- lexeme identifier;
+                         play <- lexeme parsePlay;
+                         return $ Moved (Player player) play
 
-parsePlay :: ParsecT String () Identity ()
+parsePlay :: ParsecT String () Identity Play
 parsePlay = try parseActPlay
         <|> try (lexeme (parens $ do { symbol "add";
-                                        parseTreasure;
-                                        return () } ))
+                                       treasure <- parseTreasure;
+                                       return $ Add treasure } ))
         <|> try (lexeme (parens $ do { symbol "buy";
-                                        parseCard;
-                                        return () } ))
+                                        card <- parseCard;
+                                        return $ Buy card } ))
         <|> try (lexeme (parens $ do { symbol "clean";
-                                        parseCard;
-                                        return () } ))
+                                        card <- parseCard;
+                                        return $ Clean (Just card) } ))
         <|> try (lexeme (parens $ do { symbol "clean";
-                                        return () } ))
+                                        return $ Clean Nothing } ))
 
+parseActPlay :: ParsecT String () Identity Play
 parseActPlay = try (lexeme (parens $ do {symbol "act";
                                          symbol "mine";
-                                         parseTreasure;
-                                         parseTreasure;
-                                         return () }))
+                                         t1 <- parseTreasure;
+                                         t2 <- parseTreasure;
+                                         return $ Act Mine [(T t1), (T t2)] }))
                <|> try (lexeme (parens $ do { symbol "act";
                                           symbol "cellar";
-                                          many parseCard;
-                                          return () }))
+                                          cards <- many parseCard;
+                                          return $ Act Cellar cards }))
                <|> try (lexeme (parens $ do { symbol "act";
                                               symbol "market";
-                                              return () }))
+                                              return $ Act Market [] }))
                <|> try (lexeme (parens $ do { symbol "act";
                                               symbol "remodel";
-                                              parseCard;
-                                              parseCard;
-                                              return () }))
+                                              c1 <- parseCard;
+                                              c2 <- parseCard;
+                                              return $ Act Remodel [c1, c2] }))
                <|> try (lexeme (parens $ do { symbol "act";
                                               symbol "smithy";
-                                              return () }))
+                                              return $ Act Smithy [] }))
                <|> try (lexeme (parens $ do { symbol "act";
                                               symbol "village";
-                                              return () }))
+                                              return $ Act Village [] }))
                <|> try (lexeme (parens $ do { symbol "act";
                                               symbol "woodcutter";
-                                              return () }))
+                                              return $ Act Woodcutter [] }))
                <|> try (lexeme (parens $ do { symbol "act";
                                               symbol "workshop";
-                                              parseCard;
-                                              return () }))
+                                              card <- parseCard;
+                                              return $ Act Workshop [card] }))
 
