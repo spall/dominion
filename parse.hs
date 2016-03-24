@@ -173,4 +173,10 @@ parseActPlay = try (lexeme (parens $ do {symbol "act";
                                               symbol "workshop";
                                               card <- parseCard;
                                               return $ Act Workshop [card] }))
+               <|> try (lexeme (parens $ do { symbol "act";
+                                              symbol "militia";
+                                              return $ Act Militia [] }))
+               <|> try (lexeme (parens $ do { symbol "act";
+                                              symbol "moat";
+                                              return $ Act Moat [] }))
 

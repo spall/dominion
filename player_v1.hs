@@ -5,16 +5,16 @@ import Data.Maybe
 import Data.List
 
 --(act mine treasure treasure)
-tryMine :: GameState -> Maybe String
+tryMine :: GameState -> Maybe Play
 tryMine GameState{ supply = s
                  , hand   = h}
   |    (elem (A Mine) h)
        && (elem (T Silver) h)
-       && (elem (T Gold) s) = Just $ unwords ["(", "act", show Mine, show Silver, show Gold, ")"]
+       && (elem (T Gold) s) = Just $ Act Mine [(T Silver), (T Gold)]
                               
   |    (elem (A Mine) h)
        && (elem (T Copper) h)
-       && (elem (T Silver) s) = Just $ unwords ["(", "act", show Mine, show Copper, show Silver, ")"]
+       && (elem (T Silver) s) = Just $ Act Mine [(T Copper), (T Silver)]
                                                                              
   | otherwise = Nothing
 
@@ -25,34 +25,43 @@ discard and discard them all at once. You only draw cards after
 you have discarded. If you have to shuffle to do the drawing, the
 discarded cards will end up shuffled into your new Deck.
 -}
-tryCellar :: GameState -> Maybe String
-tryCellar gs = Nothing -- todo
-
-tryMarket :: GameState -> Maybe String
+tryCellar :: GameState -> Maybe Play
+tryCellar GameState{hand=h}
+  | not (elem (A Cellar) h) = Nothing
+  | otherwise               = Just $ Act Cellar (filter (\card -> case card of
+                                                                  (V anything) -> True
+                                                                  _            -> False) h)
+                          
+tryMarket :: GameState -> Maybe Play
 tryMarket GameState{hand=h}
-  | (elem (A Market) h) = Just $ unwords ["(", "act", show Market, ")"]
-  | otherwise = Nothing
+  | (elem (A Market) h) = Just $ Act Market []
+  | otherwise           = Nothing
 
-tryRemodel :: GameState -> Maybe String
-tryRemodel gs = Nothing -- todo
+tryRemodel :: GameState -> Maybe Play
+tryRemodel GameState{hand=h
+                    , supply=s}
+  | not (elem (A Remodel) h) = Nothing
+  | (elem (A Workshop) h) && (elem (A Market) s) = Just $ Act Remodel [(A Workshop), (A Market)]
+  | (elem (A Workshop) h) && (elem (A Mine) s)   = Just $ Act Remodel [(A Workshop), (A Mine)]
+  | otherwise                                    = Nothing
 
-trySmithy :: GameState -> Maybe String
+trySmithy :: GameState -> Maybe Play
 trySmithy GameState{hand=h}
-  | (elem (A Smithy) h) = Just $ unwords ["(", "act", show Smithy, ")"]
-  | otherwise = Nothing
+  | (elem (A Smithy) h) = Just $ Act Smithy []
+  | otherwise           = Nothing
 
-tryVillage :: GameState -> Maybe String
+tryVillage :: GameState -> Maybe Play
 tryVillage GameState{hand=h}
-  | (elem (A Village) h) = Just $ unwords ["(", "act", show Village, ")"]
+  | (elem (A Village) h) = Just $ Act Village []
   | otherwise = Nothing
 
-tryWoodcutter :: GameState -> Maybe String
+tryWoodcutter :: GameState -> Maybe Play
 tryWoodcutter GameState{hand=h}
-  | (elem (A Woodcutter) h) = Just $ unwords ["(", "act", show Woodcutter, ")"]
+  | (elem (A Woodcutter) h) = Just $ Act Woodcutter [] 
   | otherwise = Nothing
 
 -- must cost no more than 4
-tryWorkshop :: GameState -> Maybe String 
+tryWorkshop :: GameState -> Maybe Play 
 tryWorkshop GameState{hand=h
                       ,supply=s}
   | not (elem (A Workshop) h) = Nothing
@@ -63,75 +72,80 @@ tryWorkshop GameState{hand=h
   | (elem (A Workshop) s) = reply (A Workshop)
   | (elem (T Silver) s) = reply (T Silver)
   | otherwise = Nothing
-  where reply = (\card -> Just $ unwords ["(", "act", show Workshop, show card, ")"])
+  where reply = (\card -> Just $ Act Workshop [card])
 
-tryMilitia :: GameState -> Maybe String
-tryMilitia gs = Nothing
+tryMilitia :: GameState -> Maybe Play
+tryMilitia GameState{hand=h}
+  | (elem (A Militia) h) = Just $ Act Militia []
+  | otherwise            = Nothing
 
-tryMoat :: GameState -> Maybe String
+tryMoat :: GameState -> Maybe Play
 tryMoat GameState{hand=h}
-  | (elem (A Moat) h) = Just $ unwords ["(", show Moat, ")"]
+  | (elem (A Moat) h) = Just $ Act Moat []
   | otherwise = Nothing
 
-tryAction :: GameState -> Maybe String
+tryAction :: GameState -> Maybe Play
 tryAction gs
   | (actions gs) < 1 = Nothing
   | otherwise = case filter (\result -> isJust result)
                      (map (\f -> f gs) fActions) of
                 []    -> Nothing
                 (f:r) -> f
-  where fActions = [tryMine, tryCellar, tryMarket
+  where fActions = [tryCellar, tryMine, tryMarket
                   , tryRemodel, trySmithy, tryVillage
-                  , tryWoodcutter, tryWorkshop]
+                  , tryWoodcutter, tryWorkshop, tryMilitia]
 
 
-firstTreasure :: [Card] -> Maybe Card
+firstTreasure :: [Card] -> Maybe Treasure
 firstTreasure ls = case filter (\c -> c == (T Copper)
                                       || c == (T Silver)
                                       || c == (T Gold)) ls of
                    []    -> Nothing
-                   (f:r) -> Just f
+                   ((T f):r) -> Just f
 
-tryBuy :: GameState -> Maybe String
+tryBuy :: GameState -> Maybe Play
 tryBuy GameState{ buys = b
                 , coins = c
                 , hand = h
                 , supply = s}
   | b < 1 = Nothing
             
-  | isJust ft = Just $ unwords ["(add", (show $ fromJust ft)++")"]
+  | isJust ft = Just $ Add (fromJust ft)
                 
   | c > (cost Province)
     && (elem (V Province) s) = reply (V Province)
 
   | c > (cost Gold)
     && (elem (T Gold) s) = reply (T Gold)
+
+  | c > (cost Market)
+    && (elem (A Market) s) = reply (A Market)
                          
   | c > (cost Mine)
     && (elem (A Mine) s) = reply (A Mine)
-                                              
+
   | c > (cost Silver)
     && (elem (T Silver) s) = reply (T Silver)
                              
   | otherwise = Nothing
   where ft = firstTreasure h
-        reply = (\card -> Just $ unwords ["(", "buy", show card, ")"])
+        reply = (\card -> Just $ Buy card)
 
 
-doTurn :: GameState -> String
+doTurn :: GameState -> Play
 doTurn gs = case tryAction gs of
-            (Just str) -> str
+            (Just play) -> play
             Nothing -> case tryBuy gs of
-                       (Just str2) -> str2
+                       (Just play2) -> play2
                        Nothing -> case hand gs of
-                                  [] -> unwords ["(", "clean", ")"]
-                                  (f:r) -> unwords ["(", "clean", show f, ")"]
+                                  [] -> Clean Nothing
+                                  (f:r) -> Clean (Just f)
 
-doDiscard :: GameState -> String
-doDiscard GameState{hand=h} = unwords $ ["(", "discard"] ++ (map show (drop 3 h)) ++ [")"]
+doDiscard :: GameState -> Defense
+doDiscard GameState{hand=h} = Discard (drop 3 h)
 
-doDefense :: GameState -> String
+doDefense :: GameState -> Defense
 doDefense gs = case tryMoat gs of
-               (Just str) -> str
+               (Just str) -> CardDefense Moat
                Nothing    -> doDiscard gs
                                   

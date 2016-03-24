@@ -69,8 +69,8 @@ instance Cost Action where
   cost Village    = 3
   cost Woodcutter = 3
   cost Workshop   = 3
-  cost Militia    = 0
-  cost Moat       = 0
+  cost Militia    = 4
+  cost Moat       = 2
 
 instance Show Action where
   show Mine       = "mine"
@@ -159,8 +159,20 @@ data Play = Clean { maybeCard::(Maybe Card) }
           | Act { action::Action
                 , info::[Card] }
 
+instance Show Play where
+  show Clean{maybeCard=Nothing}  = "(" ++ "clean" ++ ")"
+  show Clean{maybeCard=(Just c)} = "(" ++ "clean " ++ (show c) ++ ")"
+  show Buy{card=c}     = "(" ++ "buy " ++ (show c) ++ ")"
+  show Add{treasure=t} = "(" ++ "add " ++ (show t) ++ ")"
+  show Act{action=a
+          , info=i }   = "(" ++ "act " ++ (show a) ++ " " ++ (show i) ++ ")"
+
 data Defense = CardDefense { defenseAction::Action }
              | Discard { cards::[Card] }
+
+instance Show Defense where
+  show CardDefense{defenseAction=da} = "(" ++ (show da) ++ ")"
+  show Discard{cards=cs}             = "(" ++ "discard" ++ " "  ++ (show cs) ++ ")"
 
 
 data Notification = Attacked { play::Play
